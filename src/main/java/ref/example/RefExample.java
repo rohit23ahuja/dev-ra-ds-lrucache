@@ -3,7 +3,7 @@ package ref.example;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LRUCache<T> {
+public class RefExample<T> {
 	// Own version of DLL
 	private class Node {
 		int key;
@@ -17,7 +17,7 @@ public class LRUCache<T> {
 	private int totalItemsInCache;
 	private int maxCapacity;
 	
-	public LRUCache(int maxCapacity) {
+	public RefExample(int maxCapacity) {
 		totalItemsInCache=0;
 		this.maxCapacity=maxCapacity;
 		
