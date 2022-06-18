@@ -15,7 +15,7 @@ public class LinkedList<T> {
 		size = 0;
 	}
 
-	public void add(T value) {
+	public Node<T> add(T value) {
 		Node<T> node = new Node<T>(value);
 		if (head == null) {
 			head = node;
@@ -25,6 +25,7 @@ public class LinkedList<T> {
 		}
 		pointer = node;
 		size++;
+		return node;
 	}
 	
 	public void remove(T value) {
