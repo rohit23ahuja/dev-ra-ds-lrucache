@@ -1,43 +1,51 @@
 package dev.ra.ds.lrucache;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 public class LinkedList<T> {
 
-
-	@Getter
-	class Node<E> {
-
-		private E value;
-		private Node<E> prev;
-		private Node<E> next;
-		
-		Node(E value){
-			this.value = value;
-		}
-	}
-	
-	
+	private Integer size;
 	private Node<T> head;
 	private Node<T> pointer;
-	private Integer size;
-	
-	
-	
+
 	public LinkedList() {
 		size = 0;
 	}
-	
+
 	public void add(T value) {
 		Node<T> node = new Node<T>(value);
-		if (head==null) {
+		if (head == null) {
 			head = node;
 		} else {
-			node.prev = pointer;			
-			pointer.next = node;
+			node.setPrevious(pointer);
+			pointer.setNext(node);
 		}
 		pointer = node;
 		size++;
 	}
+	
+	public void remove(T value) {
+		Node<T> node = get(value);
+		node.getPrevious().setNext(node.getNext());
+		node.getNext().setPrevious(node.getPrevious());
+		node = null;
+		size--;
+	}
+	
+	public Node<T> get(T value){
+		if (head==null) return null;
+		Node<T> node = head;
+		while (node.getNext()!=null) {
+			if (node.getData()==value) {
+				return node;
+			}
+			node = node.getNext();
+		}
+		return null;
+	}
+	
 }
+ 
