@@ -1,80 +1,96 @@
 package dev.ra.ds.lrucache;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import org.apache.commons.lang3.StringUtils;
+import lombok.Getter;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 public class LruCache<T> {
 
 	private LinkedList<T> list;
 	private Map<Integer, Node<T>> map;
+	private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+	@Getter
 	private Integer currentSize;
-	private Integer size;
+
+	@Getter
+	private Integer capacity;
 
 	public LruCache(Integer size) {
 		this.list = new LinkedList<T>();
-		this.map = new HashMap<Integer, Node<T>>();
-		this.size = size;
+		this.map = new ConcurrentHashMap<Integer, Node<T>>();
+		this.capacity = size;
 		this.currentSize = 0;
 	}
 
+	/**
+	 * @param value
+	 */
 	public void add(T value) {
-		boolean itemExists = true;
+		this.lock.writeLock().lock();
 		try {
-			get(value);
-		} catch (RuntimeException e) {
-			log.info("value does not exist");
-			itemExists = false;
-		}
-
-		if (!itemExists) {
-			if (currentSize == size) {
-				Node<T> currentHead = list.getHead();
-				map.remove(currentHead.getData().hashCode());
-				Node<T> newHead = currentHead.getNext();
-				newHead.setPrevious(null);
-				list.setHead(newHead);
-				--currentSize;
+			Node<T> node = map.get(value.hashCode());
+			if (node == null) {
+				if (currentSize == capacity) {
+					Node<T> currentHead = list.getHead();
+					map.remove(currentHead.getData().hashCode());
+					Node<T> newHead = currentHead.getNext();
+					newHead.setPrevious(null);
+					list.setHead(newHead);
+					--currentSize;
+				}
+				map.put(value.hashCode(), list.add(value));
+				currentSize++;
 			}
-			Node<T> node = list.add(value);
-			map.put(value.hashCode(), node);
-			currentSize++;
+		} finally {
+			this.lock.writeLock().unlock();
 		}
-
 	}
 
 	public T get(T value) {
-		Node<T> node = map.get(value.hashCode());
-		if (node != null) {
-			node.getPrevious().setNext(node.getNext());
-			node.getNext().setPrevious(node.getPrevious());
-
-			node.setNext(null);
-			list.getPointer().setNext(node);
-			node.setPrevious(list.getPointer());
-			list.setPointer(node);
-			return node.getData();
-		} else {
-			throw new IllegalArgumentException(String.format("[%d] does not exists in cache", value));
-		}
-
-	}
-	
-	public String peekItems() {
-		String result = "";
-		Node<T> node = list.getHead();
-		while (node != null) {
-			result = result.concat(node.getData().toString());
-			if (node.getNext()!=null) {
-				result = result.concat("-->");				
+		this.lock.readLock().lock();
+		try {
+			Node<T> node = map.get(value.hashCode());
+			if (node != null) {
+				removeNode(node);
+				moveToTail(node);
+				return node.getData();
+			} else {
+				throw new IllegalArgumentException(String.format("[%d] does not exists in cache", value));
 			}
-			node = node.getNext();
+		} finally {
+			this.lock.readLock().unlock();
 		}
-		return result;
+	}
+
+	private void moveToTail(Node<T> node) {
+		node.setNext(null);
+		list.getPointer().setNext(node);
+		node.setPrevious(list.getPointer());
+		list.setPointer(node);
+	}
+
+	private void removeNode(Node<T> node) {
+		node.getPrevious().setNext(node.getNext());
+		node.getNext().setPrevious(node.getPrevious());
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder result = new StringBuilder();
+		Node<T> node = list.getHead();
+		while (true) {
+			result.append(node.getData().toString());
+			node = node.getNext();
+			if (node != null) {
+				result.append("-->");
+			} else {
+				break;
+			}
+		}
+		return result.toString();
 	}
 
 }
